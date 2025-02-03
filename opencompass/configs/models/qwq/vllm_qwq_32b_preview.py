@@ -3,7 +3,7 @@ from opencompass.models import VLLMwithChatTemplate
 models = [
     dict(
         type=VLLMwithChatTemplate,
-        abbr='qwen2_5-32b-instruct-vllm',
+        abbr='qwq-32b-preview-vllm',
         path='/mnt/data/models/pretrain_models/QwQ-32B-Preview',
         model_kwargs=dict(tensor_parallel_size=2),
         max_out_len=4096,

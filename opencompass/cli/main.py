@@ -384,7 +384,11 @@ def main():
             summarizer_cfg['config'] = cfg
             summarizer = build_from_cfg(summarizer_cfg)
             summarizer.summarize(time_str=cfg_time_str)
-
+    # added by lhj
+    # dump config
+    output_config_path = osp.join(cfg.work_dir, 'configs',
+                                  f'{cfg_time_str}_{os.getpid()}_complete.py')
+    cfg.dump(output_config_path)
 
 
 if __name__ == '__main__':

@@ -363,6 +363,8 @@ class OpenICLEvalTask(BaseTask):
                 result['predictions'] = details[i]['pred']
                 result['references'] = details[i]['answer']
                 result['correct'] = details[i]['correct']
+                # added by lhj 
+                result['judge_output'] = details[i]['eval_model_response']
             else:
                 results['type'] = 'GEN'
                 result['prompt'] = origin_prediction['origin_prompt']

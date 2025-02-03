@@ -398,6 +398,16 @@ DATASETS_MAPPING = {
         "hf_id": "THUDM/LongBench-v2",
         "local": "./data/longbenchv2/data.json",
     },
+    "opencompass/aime90": {
+        "ms_id": "",
+        "hf_id": "",
+        "local": "./data/aime90/",
+    },
+    "opencompass/asdiv": {
+        "ms_id": "",
+        "hf_id": "",
+        "local": "./data/asdiv/",
+    },
 }
 
 DATASETS_URL = {

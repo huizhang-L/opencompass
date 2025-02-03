@@ -9,18 +9,8 @@ naive_model_url = ['http://localhost:37114/v1/'] # Multi-apis for accerlation
 
 # ----------------------------- Detailed Config -----------------------------
 # openai_simple_eval prompt
-# align_prompt = """
-# Answer the following multiple choice question. The last line of your response should be of the following format: 'ANSWER: $LETTER' (without quotes) where LETTER is one of ABCD.
-
-# {question}
-
-# A) {A}
-# B) {B}
-# C) {C}
-# D) {D}
-# """.strip()
 align_prompt = """
-Answer the following multiple choice question. Remember to put your final answer within \\boxed{}. The answer only needs to include the option where is one of ABCD.
+Answer the following multiple choice question. Remember to put your final answer within \\boxed{}. The answer only needs to include the option where is one of ABCD. Think step by step before answering.
 
 {question}
 
@@ -39,7 +29,7 @@ gpqa_infer_cfg = dict(
         type=PromptTemplate,
         template=dict(
             begin=[
-                dict(role='SYSTEM', fallback_role='HUMAN', prompt="You are a helpful and harmless assistant. You are Qwen developed by Alibaba. You should think step-by-step."),
+                dict(role='SYSTEM', fallback_role='HUMAN', prompt="You are Qwen, created by Alibaba Cloud. You are a helpful assistant."),
             ],
             round=[
                 dict(role='HUMAN', prompt=align_prompt),

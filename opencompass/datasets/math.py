@@ -163,7 +163,7 @@ class MATHDataset(BaseDataset):
                     'problem':
                     data[i]['problem'],
                     'solution':
-                    extract_boxed_answer(data[i]['solution'])
+                    extract_boxed_answer(data[i]['solution']) # 提取出最终答案，即原数据集中的 \boxed{42}中的内容
                 })
         dataset['test'] = Dataset.from_list(raw_data)
         dataset['train'] = Dataset.from_list(raw_data)

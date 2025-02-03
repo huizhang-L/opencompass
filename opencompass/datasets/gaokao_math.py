@@ -61,14 +61,137 @@ Question: {question}
 Output sentences: {response}
 Key extracted answer:
 """ # noqa E501
+GRADER_TEMPLATE="""
+Please as a grading expert, judge whether the final answers given by the candidates below are consistent with the standard answers, that is, whether the candidates answered correctly. 
+
+Here are some evaluation criteria:
+1. Please refer to the given standard answer. You don't need to re-generate the answer to the question because the standard answer has been given. You only need to judge whether the candidate's answer is consistent with the standard answer according to the form of the question. Don't try to answer the original question. You can assume that the standard answer is definitely correct.
+2. Because the candidate's answer may be different from the standard answer in the form of expression, before making a judgment, please understand the question and the standard answer first, and then judge whether the candidate's answer is correct, but be careful not to try to answer the original question.
+3. Some answers may contain multiple items, such as multiple-choice questions, multiple-select questions, fill-in-the-blank questions, etc. As long as the answer is the same as the standard answer, it is enough. For multiple-select questions and multiple-blank fill-in-the-blank questions, the candidate needs to answer all the corresponding options or blanks correctly to be considered correct.
+4. Some answers may be expressed in different ways, such as some answers may be a mathematical expression, some answers may be a textual description, as long as the meaning expressed is the same. And some formulas are expressed in different ways, but they are equivalent and correct.
+5. If the prediction is given with \\boxed{{}}, please ignore the \\boxed{{}} and only judge whether the candidate's answer is consistent with the standard answer.
+6. If the question is multiple choice, don't focus too much on the form of the answer. The answer can be an option or a specific answer or other reasonable form.
+
+Please judge whether the following answers are consistent with the standard answer based on the above criteria. Grade the predicted answer of this new question as one of:
+A: CORRECT 
+B: INCORRECT
+Just return the letters "A" or "B", with no text around it.
+
+Here is your task. Simply reply with either CORRECT, INCORRECT. Don't apologize or correct yourself if there was a mistake; we are just trying to grade the answer.
 
 
-def extract_boxed_answer(text):
-    match = re.findall(r'\\boxed{(.+?)}', text)
-    if match:
-        return match[-1]
-    return None
+<Original Question Begin>: \n{question}\n<Original Question End>\n\n
+<Gold Target Begin>: \n{gold_answer}\n<Gold Target End>\n\n
+<Predicted Answer Begin>: \n{answer}\n<Predicted End>\n\n
 
+Judging the correctness of candidates' answers:
+""".strip()
+
+# Meta_Instruction = """You are a help assistant tasked with extracting the precise key answer from given output sentences. You must only provide the extracted key answer without including any additional text.
+# -
+# I will provide you with a question, output sentences along with an answer range. The output sentences are the response of the question provided. The answer range could either describe the type of answer expected or list all possible valid answers. Using the information provided, you must accurately and precisely determine and extract the intended key answer from the output sentences. Please don't have your subjective thoughts about the question.
+# First, you need to determine whether the content of the output sentences is relevant to the given question. If the entire output sentences are unrelated to the question (meaning the output sentences are not addressing the question), then output [No valid answer].
+# Otherwise, ignore the parts of the output sentences that have no relevance to the question and then extract the key answer that matches the answer range.
+# Below are some special cases you need to be aware of:
+#     (1) If the answer range is a list and the key answer in the output sentences is not explicitly listed among the candidate options in the answer range, also output [No valid answer].
+#     (2) You should only return the precise answer you extract, without processing the answer. Please return only the answer and do not add any additional content.
+#     (3) If the response sentence provides multiple different answers, carefully determine whether a later provided answer is a correction or modification of an earlier answer. If so, extract this corrected or modified answer as the final answer. Conversely, if the response sentence fluctuates between multiple answers without a clear final answer, you should output [No valid answer].
+# —
+# Question: {question}
+# Output sentences: {response}
+# Key extracted answer:
+# """ # noqa
+Meta_Instruction = """You are a help assistant tasked with extracting the precise key answer from given output sentences. You must only provide the extracted key answer without including any additional text.
+-
+I will provide you with a question, output sentences along with an answer range. The output sentence is the answer or the final part of the answer to the provided question. The answer range could either describe the type of answer expected or list all possible valid answers. Using the information provided, you must accurately and precisely determine and extract the intended key answer from the output sentences. Please don't have your subjective thoughts about the question.
+First, you need to determine whether the content of the output sentences is relevant to the given question. If the entire output sentences are unrelated to the question (meaning the output sentences are not addressing the question), then output [No valid answer].
+Otherwise, ignore the parts of the output sentences that have no relevance to the question and then extract the key answer that matches the answer range.
+Below are some special cases you need to be aware of:
+    (1) If the answer range is a list and the key answer in the output sentences is not explicitly listed among the candidate options in the answer range, also output [No valid answer].
+    (2) You should only return the precise answer you extract, without processing the answer. Please return only the answer and do not add any additional content.
+    (3) If the response sentence provides multiple different answers, carefully determine whether a later provided answer is a correction or modification of an earlier answer. If so, extract this corrected or modified answer as the final answer. Conversely, if the response sentence fluctuates between multiple answers without a clear final answer, you should output [No valid answer].
+—
+Question: {question}
+Output sentences: {response}
+Key extracted answer:
+""" # noqa
+
+# def extract_boxed_answer(text):
+#     match = re.findall(r'\\boxed{(.+?)}', text)
+#     if match:
+#         return match[-1]
+#     return None
+
+def last_boxed_only_string(string):
+    idx = string.rfind('\\boxed')
+    if idx < 0:
+        idx = string.rfind('\\fbox')
+        if idx < 0:
+            return None
+
+    i = idx
+    right_brace_idx = None
+    num_left_braces_open = 0
+    while i < len(string):
+        if string[i] == '{':
+            num_left_braces_open += 1
+        if string[i] == '}':
+            num_left_braces_open -= 1
+            if num_left_braces_open == 0:
+                right_brace_idx = i
+                break
+        i += 1
+
+    if right_brace_idx is None:
+        retval = None
+    else:
+        retval = string[idx:right_brace_idx + 1]
+
+    return retval
+
+
+def remove_boxed(s):
+    left = '\\boxed{'
+    try:
+        assert s[:len(left)] == left
+        assert s[-1] == '}'
+        return s[len(left):-1]
+    except Exception:
+        return None
+
+
+def extract_boxed_answer(pred_str, strip_double_curly_brace=False):
+    boxed_str = last_boxed_only_string(pred_str)
+    if boxed_str is None:
+        return None
+    answer = remove_boxed(boxed_str)
+    if answer is None:
+        return None
+    if strip_double_curly_brace:
+        match = re.match('^\{(.*)\}$', answer)  # noqa: W605
+        if match:
+            answer = match.group(1)
+    return answer
+
+def extract_boxed_answer_new(text):
+    # 去除开头的空格
+    stripped_answer = text.lstrip()
+    # 检查是否以 'A' 开头
+    return stripped_answer.startswith('A')
+
+def extract_last_n_sentences(text, n=5):
+    text = text.strip()
+    if text and text[-1] not in ".!?":  # 如果最后没有标点符号，则加上 "."
+        text += "."
+
+    # 按句号（.）、问号（?）、感叹号（!）分割句子
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+
+    # 取最后 n 句话
+    last_sentences = sentences[-n:]
+
+    # 重新拼接成字符串
+    return ' '.join(last_sentences)
 
 @LOAD_DATASET.register_module()
 class GaoKaoMATHDataset(BaseDataset):
@@ -111,10 +234,10 @@ class GaoKaoMATHEvaluator(BaseEvaluator):
                     path=model_name,
                     openai_api_base=url,
                     key='EMPTY',
-                    query_per_second=2,
+                    query_per_second=16,
                     meta_template=api_meta_template,
                     temperature=kwargs.get('temperature', 1e-6),
-                    max_seq_len=kwargs.get('max_tokens', 8192),
+                    max_seq_len=kwargs.get('max_tokens', 30000),
                 )) for url in url
         ]
         self.question_type = question_type
@@ -147,22 +270,45 @@ class GaoKaoMATHEvaluator(BaseEvaluator):
                     path=self.post_model_name,
                     openai_api_base=url,
                     key='EMPTY',
-                    query_per_second=2,
+                    query_per_second=16,
                     meta_template=api_meta_template,
                     temperature=1e-6,
-                    max_seq_len=1024,
+                    max_seq_len=30000,
                 )) for url in self.post_url
         ]
         input_prompts = []
-        prompt = POST_PROMPT_EN if self.language == 'en' else POST_PROMPT_CN
+        rule_extracted_answer = []
+        extracted_answer = []
+        # prompt = POST_PROMPT_EN if self.language == 'en' else POST_PROMPT_CN
+        # modified by lhj
+        prompt = Meta_Instruction if self.language == 'en' else POST_PROMPT_CN
         for question, response, question_type in zip(questions, predictions,
                                                      question_type):
-            input_prompts.append(
-                prompt.format(question=question,
-                              response=response,
-                              question_type=question_type))
+            # input_prompts.append(
+            #     prompt.format(question=question,
+            #                   response=response,
+            #                   question_type=question_type))
+            # added by lhj
+            cand_ans = extract_boxed_answer(response)
+            last_response = extract_last_n_sentences(response, 5)
+            if cand_ans:
+                rule_extracted_answer.append(cand_ans)
+                input_prompts.append(
+                    prompt.format(question=question,
+                                response=last_response))
+            else:
+                rule_extracted_answer.append('')
+                input_prompts.append(
+                    prompt.format(question=question,
+                                response=last_response))
         result_responses = self.batch_response(self.post_model, input_prompts)
-        return result_responses
+        # added by lhj
+        for  rea, rr in zip(rule_extracted_answer, result_responses):
+            if rea != '':
+                extracted_answer.append(rea)
+            else:
+                extracted_answer.append(rr)
+        return extracted_answer
 
     def score(self, predictions, references, origin_prompt, test_set):
         if len(predictions) != len(references):
@@ -190,13 +336,17 @@ class GaoKaoMATHEvaluator(BaseEvaluator):
 
         inputs = []
         for pred, ref, ques in zip(predictions, references, questions):
+            # inputs.append(
+            #     EVAL_PROMPT.format(answer=pred, gold_answer=ref,
+            #                        question=ques))
+            # modified by lhj
             inputs.append(
-                EVAL_PROMPT.format(answer=pred, gold_answer=ref,
+                GRADER_TEMPLATE.format(answer=pred, gold_answer=ref,
                                    question=ques))
         result_responses = self.batch_response(self.model, inputs)
 
         results = [
-            extract_boxed_answer(result) == 'yes'
+            extract_boxed_answer_new(result)
             for result in result_responses
         ]
         for pred, ref, result, result_response in zip(predictions, references,
