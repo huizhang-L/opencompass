@@ -1,7 +1,7 @@
 from opencompass.openicl.icl_prompt_template import PromptTemplate
 from opencompass.openicl.icl_retriever import ZeroRetriever
 from opencompass.openicl.icl_inferencer import GenInferencer
-from opencompass.datasets import Aime90Dataset, GaoKaoMATHEvaluator, math_postprocess_v2
+from opencompass.datasets import AsdivDataset, GaoKaoMATHEvaluator, MATHEvaluator, math_postprocess_v2
 # ----------------------------- Model Eval Parameters -----------------------------
 
 naive_model_name = 'llama3.3-70b-instruct' # replace with your model name
@@ -9,13 +9,13 @@ naive_model_url = ['http://localhost:37114/v1/'] # Multi-apis for accerlation
 
 # ----------------------------- Detailed Config -----------------------------
 
-aime90_reader_cfg = dict(
+asdiv_reader_cfg = dict(
     input_columns=['problem'], 
-    output_column='expected_answer'
+    output_column='Answer'
 )
 
 
-aime90_infer_cfg = dict(
+asdiv_infer_cfg = dict(
     prompt_template=dict(
         type=PromptTemplate,
         template=dict(
@@ -41,18 +41,22 @@ evaluator = dict(
     post_model_name=naive_model_name,
 )
 
-aime90_eval_cfg = dict(
+asdiv_eval_cfg = dict(
     evaluator=evaluator,
 )
 
-aime90_datasets = [
+# asdiv_eval_cfg = dict(
+#     evaluator=dict(type=MATHEvaluator, version='v2'), pred_postprocessor=dict(type=math_postprocess_v2),
+# )
+
+asdiv_datasets = [
     dict(
-        abbr='aime90',
-        type=Aime90Dataset,
-        path='opencompass/aime90',
-        file_name='aime.jsonl',
-        reader_cfg=aime90_reader_cfg,
-        infer_cfg=aime90_infer_cfg,
-        eval_cfg=aime90_eval_cfg
+        abbr='asdiv',
+        type=AsdivDataset,
+        path='opencompass/asdiv',
+        file_name='asdiv.jsonl',
+        reader_cfg=asdiv_reader_cfg,
+        infer_cfg=asdiv_infer_cfg,
+        eval_cfg=asdiv_eval_cfg
     )
 ]
